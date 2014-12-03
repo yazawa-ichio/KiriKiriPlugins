@@ -1,6 +1,9 @@
 ﻿吉里吉里でネットワーク経由でパッチを当てられるプラグインです。
 
 【準備】
+下URLのZIPファイルをダウンロードして下さい。
+https://raw.githubusercontent.com/yazawa-ichio/KiriKiriPlugins/master/PatchDownloader/PatchDownloader.zip
+
 以下のDLLプラグインが必要になのでダウンロードしてください。
 
 ・httprequest.dll
