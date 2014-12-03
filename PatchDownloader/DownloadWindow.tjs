@@ -1,0 +1,159 @@
+
+Plugins.link("httprequest.dll");
+Plugins.link("ktl_storage_stream.dll");
+
+class DownloadWindow extends Window
+{
+	var progress;
+	var downloader;
+	var storage;
+	var path;
+	var downloading = true;
+	var dialog = true;
+	var complete;
+	
+	function DownloadWindow(url, path, caption = "ダウンロード"){
+		
+		super.Window();
+		
+		borderStyle = bsNone;
+		this.caption = caption;
+		storage = new StorageStream();
+		
+		//ダウンロードさせるパス
+		this.path = path;
+		
+		//プライマリレイターの作成と調整
+		setPrimaryLayer();
+		//プログレス用のレイヤーを作成
+		setProgressLayer();
+		
+		//各イベントをこのウインドウで受け取る
+		downloader = new HttpRequest(this);
+		downloader.onProgress = onProgress;
+		downloader.onReadyStateChange = onReadyStateChange;
+		downloader.open('GET', url);
+		downloader.send();
+		
+		//位置調整,KAGのダイヤログから持ってきた。
+		setPosition();
+		
+	}
+	
+	function setPrimaryLayer(){
+		add(new Layer(this,null));
+		var w,l;
+		primaryLayer.font.height = 18;
+		var tw = primaryLayer.font.getTextWidth(caption);
+		if(300 > tw + 20){
+			w = 300;
+			l = (w - tw)/2;
+		}else{
+			w = tw + 20;
+			l = 10;
+		}
+		
+		setInnerSize(w, 60);
+		primaryLayer.setImageSize(innerWidth,innerHeight);
+		primaryLayer.setSize(innerWidth,innerHeight);
+		primaryLayer.colorRect(0,0,innerWidth,innerHeight, clBtnFace, 255);
+		primaryLayer.drawText(l, 5, caption, 0x000000);
+	}
+	
+	function setProgressLayer(w){
+		progress = new Layer(this, primaryLayer);
+		progress.setSize(innerWidth-20, 25);
+		progress.setPos(10,30);
+		progress.font.height = 18;
+		progress.visible = true;
+		progressDraw(0);
+	}
+
+	//ダウンロード完了時に終了処理
+	function onReadyStateChange(readyState)
+	{
+		if(downloader.readyState == global.HttpRequest.LOADED && downloading)
+		{
+			downloading = false;
+			if(downloader.responseData !== void){
+				storage.open(path,StorageStream.afWrite);
+				storage.writeOctet(downloader.responseData);
+				storage.close();
+				if(dialog)
+					System.inform('ダウンロード完了');
+			}else{
+				if(dialog)
+					System.inform('ダウンロードに失敗しました');
+			}
+			close();
+		}
+	}
+	
+	
+	//どこまでダウンロードされたか
+	function onProgress(upload, percent){
+		progressDraw((int)percent);
+	}
+	
+	//パーセントの更新
+	function progressDraw(par){
+		var text = par + "%";
+		Debug.message(text);
+		with(progress){
+			.type = ltAlpha;
+			.fillRect(0, 0, .imageWidth, .imageHeight, 0);
+			.colorRect(0,0, .width, .height, 0xffffff,230);
+			.colorRect(4,4,(.width  - .font.getTextWidth(text) - 20)*(par/100) , .height-8, 0x000000,255);
+			.drawText(.width - .font.getTextWidth(text) - 10,
+						(.height - .font.getTextHeight(text))/2,text,0x000000);
+		}
+	}
+	//ここでオプションを弄る。拡張用
+	function setOption(opt){
+		dialog = +opt.dialog if opt.dialog !== void;
+		borderStyle = opt.bsNone if opt.bsNone !== void;
+	}
+	//ダウンロード中は終了しない
+	function onCloseQuery()
+	{
+		if(downloading){
+			super.onCloseQuery(false);
+			if(dialog)
+				System.inform("ダウンロード中です");
+		}else{
+			super.onCloseQuery(true);
+		}
+	}
+	
+	function setPosition(){
+		// ウィンドウ位置の調整
+		if(global.Window.mainWindow !== null && global.Window.mainWindow isvalid)
+		{
+			var win = global.Window.mainWindow;
+			var l, t;
+			l = ((win.width - width)>>1) + win.left;
+			t = ((win.height - height)>>1) + win.top;
+			if(l < 0) l = 0;
+			if(t < 0) t = 0;
+			if(l + width > System.screenWidth) l = System.screenWidth - width;
+			if(t + height > System.screenHeight) t = System.screenHeight - height;
+			setPos(l, t);
+		}
+		else
+		{
+			setPos((System.screenWidth - width)>>1, (System.screenHeight - height)>>1);
+		}
+	}
+}
+
+//実際のダウンロードはこちらを通して行う。
+function DLWindow(url,path,opt,caption){
+	if(!Storages.isExistentStorage(path)){
+		var win = new DownloadWindow(url,path,caption);
+		if(opt !== void)
+			win.setOption(opt);
+		win.showModal();
+	}else{
+		System.inform('ファイルの上書きは出来ません');
+	}
+}
