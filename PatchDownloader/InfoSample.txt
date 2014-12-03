@@ -1,0 +1,4 @@
+【version】PDConfigがこのバージョン以下だとダウンロード可能になります。
+0.00
+【url】実際のパッチのダウンロード先です。
+https://dl.dropboxusercontent.com/u/70934861/patch.xp3
